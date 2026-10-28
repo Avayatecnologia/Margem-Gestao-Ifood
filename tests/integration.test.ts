@@ -1,0 +1,31 @@
+﻿import{test}from'node:test';import assert from'node:assert/strict';import{mkdtempSync,rmSync}from'node:fs';import{tmpdir}from'node:os';import{join}from'node:path';import{createApp}from'../server/app.ts';import{today}from'../shared/schema.ts';
+test('fluxo persistente completo, histórico, ajustes, importação e restauração',async()=>{const dir=mkdtempSync(join(tmpdir(),'margem-'));let ctx=createApp(dir);await ctx.app.ready();
+const call=async(path:string,body?:any,status=200)=>{const r=await ctx.app.inject({method:body===undefined?'GET':'POST',url:'/api/'+path,payload:body});assert.equal(r.statusCode,status,r.body);return r.json();};
+try{const initial=await call('state');const i=await call('save/ingredients',{name:'Teste',unit:'kg',quantity:1,price:20,yield:80,consume:'g'});
+const p=await call('save/products',{name:'Hambúrguer',code:'H1',mode:'recipe',cost:null,portions:1,components:[{kind:'ingredients',id:i.id,quantity:400}]});
+const plan=await call('save/plans',{name:'Fictício',channel:initial.channels[0].id,from:'2020-01-01',rules:[{name:'Comissão',type:'percent',value:25,scope:'order',base:'gross'}]});
+await call('save/plans',{...plan,id:undefined},400);
+const order={external:'PED-1',date:today(),plan:plan.id,items:[{product:p.id,quantity:1,price:20}]};
+const sim=await call('simulate',{order,suggest:true,margin:20});assert.equal(sim.price,18.19);await call('save/prices',{product:p.id,plan:plan.id,price:20,margin:20});
+const o=await call('save/orders',order);assert.equal(o.snapshot.cost,10);assert.equal(o.snapshot.contribution,5);
+await call('save/ingredients',{...i,price:24});const state=await call('state');assert.equal(state.costs[p.id].unit,12);assert.equal(state.orders[0].snapshot.cost,10);
+await call('save/orders',order,400);await call('save/expenses',{name:'Aluguel',amount:2,from:'2020-01-01'});
+let report=await call('report?from='+today().slice(0,7)+'-01&to='+today());assert.equal(report.operating,3);
+await call('save/adjustments',{order:o.id,name:'Cancelamento, produção perdida',date:today(),kind:'cancel',refund:20,feesReturned:5,costRecovered:0});
+report=await call('report?from='+today().slice(0,7)+'-01&to='+today());assert.equal(report.contribution,-10);assert.equal(report.operating,-12);
+await call('save/reconciliations',{order:o.id,date:today(),amount:0,note:'Devolução integral'});
+const imp={kind:'products',csv:'name;code;mode;cost\nÁgua;AG;manual;1,50',mapping:{}};const preview=await call('import/preview',imp);assert.equal(preview.records[0].error,null);assert.equal((await call('import/commit',{...imp,confirm:true})).count,1);await call('import/commit',{...imp,confirm:true},400);assert.equal((await call('import/commit',{...imp,confirm:true,policy:'skip'})).count,0);
+const backup=await call('backup');await ctx.app.close();ctx=createApp(dir);await ctx.app.ready();assert.equal((await call('state')).orders.length,1);await call('restore',{confirm:'SUBSTITUIR',backup});assert.equal((await call('state')).orders[0].snapshot.cost,10);
+await call('restore',{confirm:'SUBSTITUIR',backup:{...backup,version:99}},400);assert.equal((await call('state')).orders.length,1);
+const exported=await ctx.app.inject('/api/export/products');assert.equal(exported.statusCode,200);assert.match(exported.body,/Água/);
+}finally{await ctx.app.close();rmSync(dir,{recursive:true,force:true});}});
+
+test('conferência posterior e tabela de preços preservam o original',async()=>{const dir=mkdtempSync(join(tmpdir(),'margem-conferencia-'));const {app}=createApp(dir);await app.ready();const call=async(path:string,body?:any,status=200)=>{const r=await app.inject({method:body===undefined?'GET':'POST',url:'/api/'+path,payload:body});assert.equal(r.statusCode,status,r.body);return r.json();};try{
+ const state=await call('state');const p=await call('save/products',{name:'Teste',code:'T',mode:'manual',cost:10});const plan=await call('save/plans',{name:'Plano',channel:state.channels[0].id,from:'2020-01-01',rules:[{name:'Comissão',type:'percent',value:20,base:'gross',scope:'order'}]});
+ const order=await call('save/orders',{external:'C1',date:today(),plan:plan.id,items:[{product:p.id,quantity:1,price:20}]});assert.equal(order.snapshot.fees,4);
+ await call('save/prices',{product:p.id,plan:plan.id,price:20,margin:20});const matrix=await call('pricing');assert.equal(matrix[0].contribution,6);assert.equal(matrix[0].suggested,16.67);
+ await call('save/confirmations',{order:order.id,date:today(),actualFees:5,note:'Taxas efetivas conferidas'});const effective=(await call('state')).orders[0];assert.equal(effective.confirmed,true);assert.equal(effective.snapshot.fees,5);assert.equal(effective.originalSnapshot.fees,4);
+ const backup=await call('backup');assert.equal(backup.documents.orders[0].snapshot.fees,4);assert.equal(backup.documents.confirmations[0].snapshot.fees,5);await call('restore',{confirm:'SUBSTITUIR',backup});assert.equal((await call('state')).orders[0].snapshot.fees,5);
+ const broken=structuredClone(backup);broken.documents.orders[0].snapshot.cost=999;await call('restore',{confirm:'SUBSTITUIR',backup:broken},400);assert.equal((await call('state')).orders[0].snapshot.cost,10);
+ const report=await call('report?from='+today()+'&to='+today());assert.equal(report.contribution,5);assert.equal(report.expected,0);
+ }finally{await app.close();rmSync(dir,{recursive:true,force:true});}});

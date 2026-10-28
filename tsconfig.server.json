@@ -1,0 +1,1 @@
+﻿{"extends":"./tsconfig.json","compilerOptions":{"noEmit":false,"outDir":"build","rootDir":".","module":"NodeNext","moduleResolution":"NodeNext","rewriteRelativeImportExtensions":true,"jsx":"react-jsx"},"include":["server","shared"],"exclude":["src","tests"]}

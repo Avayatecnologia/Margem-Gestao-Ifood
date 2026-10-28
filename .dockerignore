@@ -1,0 +1,17 @@
+node_modules
+build
+dist
+data
+backups
+evidencias
+.git
+.env
+.env.*
+*.sqlite*
+*.db
+*.zip
+*.tar*
+*.log
+**/.npmrc
+**/*.pem
+**/*.key
