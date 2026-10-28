@@ -1,7 +1,7 @@
 # Manual do usuário — Margem
 
-**Precificação e acompanhamento de resultados para iFood, 99 e venda direta**  
-Versão 1.3 • Docker, múltiplos estabelecimentos e referências iFood • 28 de outubro de 2026  
+**Precificação e acompanhamento de resultados para iFood, 99 e venda direta**
+Versão 1.3 • Docker, múltiplos estabelecimentos e referências iFood • 28 de outubro de 2026
 Este manual descreve os campos e comportamentos da versão implementada. Todos os valores dos exemplos são fictícios; use os custos e contratos reais do seu estabelecimento.
 
 ## Índice

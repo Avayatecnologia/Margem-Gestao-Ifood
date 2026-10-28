@@ -84,4 +84,3 @@ function Workspace(){
  return <App key={selected} companyId={selected} companies={companies} refreshCompanies={refresh} selectCompany={select}/>;
 }
 createRoot(document.getElementById('root')!).render(<Workspace/>);
-

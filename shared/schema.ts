@@ -24,4 +24,3 @@ export type Order=z.infer<typeof schemas.orders>;
 export type Ingredient=z.infer<typeof schemas.ingredients>;
 export type Doc=Record<string,any>;
 export const today=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Sao_Paulo'}).format(new Date());
-
