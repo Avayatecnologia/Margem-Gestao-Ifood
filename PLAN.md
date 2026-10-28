@@ -57,6 +57,6 @@ Referências iFood incluídas após backup prévio em data/backups. Produtos, pr
 - [x] Igualdade dos dados por API antes/depois da troca e verificação de contagens/hashes dos registros.
 - [x] Backup completo do volume testado, verificado no Windows e restaurado em volume separado com integridade confirmada.
 - [x] Iniciador, parada, backup e manual atualizados; dados e credenciais excluídos do Git/contexto Docker.
-- [ ] Envio ao GitHub: falta repositório de destino e autenticação autorizada. Repositório Git local preparado; não afirmar publicação remota antes da confirmação.
+- [x] Código, Docker, testes e manuais publicados em https://github.com/Avayatecnologia/Margem-Gestao-Ifood, branch main. Bancos, backups e credenciais excluídos.
 
 A exportação do Docker copia os arquivos com o serviço pausado e verifica os bancos na cópia gravável, para suportar o WAL do SQLite sem criar arquivos no volume de origem somente leitura. O aplicativo é retomado mesmo em caso de falha de exportação. A rotina foi retestada após esse ajuste.
